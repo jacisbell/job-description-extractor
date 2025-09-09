@@ -1,6 +1,10 @@
 '''
 This file uses a dataset of 100 job descriptions from kaggle and processes the job descriptions to gain insight into the market.
-Contains a function for cleaning text called clean_text(str)
+Contains a function for cleaning text called clean_text(str). 
+Performs classification of seniority level based on job description
+Generates images for top companies, top locations, and classification confusion matrix.
+
+The confusion matrix shows how many descriptions for entry level positions look like mid-senior level descriptions.
 '''
 import os
 import re
@@ -13,6 +17,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report
+from sklearn.metrics import confusion_matrix
 
 print("Start")
 
@@ -36,6 +41,7 @@ fig.clear()
 
 ax = df['company_name'].value_counts().head(10).plot(kind='barh', title='Top 10 Hiring Companies')
 fig.savefig('jobs_TopCompanies.png', bbox_inches='tight')
+fig.clear()
 
 
 ### Preprocess and clean
@@ -64,12 +70,18 @@ tfidf_matrix = tfidf.fit_transform(df['cleaned_desc'])
 # Extract top terms
 top_terms = tfidf.get_feature_names_out()
 print("Top 20 TF-IDF Keywords in Job Descriptions:")
-print(', '.join(top_terms))
-
+print(', '.join(top_terms) + "\n")
 
 ### See if we can predict seniority level from job description
-# Drop rows with missing seniority labels
+# Drop rows with missing seniority labels or counts less than 50
 ml_data = df.dropna(subset=['seniority_level'])
+ml_data = ml_data[~ml_data['seniority_level'].str.contains('Not Applicable', na=False)]
+
+v = ml_data['seniority_level'].value_counts()
+# print(v)
+ml_data = ml_data[ml_data['seniority_level'].isin(v.index[v.gt(5)])]
+print(ml_data['seniority_level'].value_counts())
+
 
 # Prepare features (TF-IDF) and target
 vectorizer = TfidfVectorizer(stop_words='english', max_features=300)
@@ -92,21 +104,13 @@ print(classification_report(y_test, y_pred))
 # Confusion Matrix
 cm = confusion_matrix(y_test, y_pred, labels=model.classes_)
 plt.figure(figsize=(10, 8))
-sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+ax = sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
             xticklabels=model.classes_,
             yticklabels=model.classes_)
 plt.title('Confusion Matrix: Seniority Level Prediction')
 plt.xlabel('Predicted')
 plt.ylabel('True')
 plt.tight_layout()
-plt.show()
-
-# Prediction Distribution
-plt.figure(figsize=(8, 4))
-sns.countplot(x=y_pred, order=pd.Series(y_pred).value_counts().index, palette='Set2')
-plt.title("Predicted Seniority Levels")
-plt.xlabel("Seniority Level")
-plt.ylabel("Frequency")
-plt.xticks(rotation=45)
-plt.tight_layout()
-plt.show()
+fig = ax.get_figure()
+fig.savefig('jobs_ConfusionMatrix.png', bbox_inches='tight')
+fig.clear()

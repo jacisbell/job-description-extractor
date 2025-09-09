@@ -48,11 +48,11 @@ fig.clear()
 # Remove rows with null job descriptions
 df.dropna(subset=['job_description_text'], inplace=True)
 
-# Define a basic cleaning function
+# Define a basic cleaning function, removing special characters, removing multiple spaces, lowercase and trim.
 def clean_text(text):
-    text = re.sub(r'[^a-zA-Z0-9\s]', '', text)  # Remove special characters
-    text = re.sub(r'\s+', ' ', text)            # Replace multiple spaces with single space
-    return text.strip().lower()                 # Lowercase and trim
+    text = re.sub(r'[^a-zA-Z0-9\s]', '', text)
+    text = re.sub(r'\s+', ' ', text)
+    return text.strip().lower()
 
 # Apply cleaning to job descriptions
 df['cleaned_desc'] = df['job_description_text'].apply(clean_text)
